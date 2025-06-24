@@ -10,13 +10,8 @@ import java.time.LocalDateTime;
 @Table(name = "customer_prices")
 public class CustomerPrice {
 
-    @Id
-    @Column(name = "product_id", length = 50)
-    private String productId;
-
-    @Id
-    @Column(name = "customer_id", length = 50)
-    private String customerId;
+    @EmbeddedId
+    private CustomerPriceId id;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
@@ -36,12 +31,8 @@ public class CustomerPrice {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Getters and Setters
-    public String getProductId() { return productId; }
-    public void setProductId(String productId) { this.productId = productId; }
-
-    public String getCustomerId() { return customerId; }
-    public void setCustomerId(String customerId) { this.customerId = customerId; }
+    public CustomerPriceId getId() { return id; }
+    public void setId(CustomerPriceId id) { this.id = id; }
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
