@@ -199,13 +199,15 @@
       }
 
       const payload = {
-        productId: selectedProductId,
-        customerId: selectedCustomerId,
-        price: parseFloat(priceInput.value),
-        currency: currencyInput.value || 'USD',
-        validFrom: validFromInput.value || null,
-        validTo: validToInput.value || null
-      };
+    		  id: {
+    		    productId: selectedProductId,
+    		    customerId: selectedCustomerId
+    		  },
+    		  price: parseFloat(priceInput.value),
+    		  currency: currencyInput.value || 'USD',
+    		  validFrom: validFromInput.value || null,
+    		  validTo: validToInput.value || null
+  		};
 
       const res = await fetch(`http://localhost:8082/priceguide/customer-prices`, {
         method: 'POST',
