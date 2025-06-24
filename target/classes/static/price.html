@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Customer Price Management</title>
+</head>
+<body>
+  <h2>Customer-Specific Price Management</h2>
+
+  <!-- Product Dropdown -->
+  <label for="productSelect">Product ID:</label>
+  <select id="productSelect">
+    <option value="">-- Select a product --</option>
+  </select>
+
+  <!-- Customer Dropdown -->
+  <label for="customerSelect" style="margin-left:20px;">Customer ID:</label>
+  <select id="customerSelect" disabled>
+    <option value="">-- Select a customer --</option>
+  </select>
+
+  <!-- Product Info -->
+  <div id="productInfo" style="margin-top:20px;">
+    <h3>Product Info</h3>
+    <p><strong>Code:</strong> <span id="code"></span></p>
+    <p><strong>Name:</strong> <span id="name"></span></p>
+    <p><strong>Type:</strong> <span id="type"></span></p>
+    <p><strong>Active:</strong> <span id="active"></span></p>
+  </div>
+
+  <!-- Customer Price Form -->
+  <div style="margin-top:20px;">
+    <h3>Customer Price Info</h3>
+    <p><label>Price: <input type="number" id="price" step="0.01" /></label></p>
+    <p><label>Currency: <input type="text" id="currency" maxlength="3" value="USD" /></label></p>
+    <p><label>Valid From: <input type="date" id="validFrom" /></label></p>
+    <p><label>Valid To: <input type="date" id="validTo" /></label></p>
+    <button onclick="saveCustomerPrice()">Save Customer Price</button>
+  </div>
+
+  <script>
+    const productSelect = document.getElementById('productSelect');
+    const customerSelect = document.getElementById('customerSelect');
+    const codeSpan = document.getElementById('code');
+    const nameSpan = document.getElementById('name');
+    const typeSpan = document.getElementById('type');
+    const activeSpan = document.getElementById('active');
+
+    const priceInput = document.getElementById('price');
+    const currencyInput = document.getElementById('currency');
+    const validFromInput = document.getElementById('validFrom');
+    const validToInput = document.getElementById('validTo');
+
+    let productMap = new Map();
+    let customerMap = new Map();
+
+    let selectedProductId = null;
+    let selectedCustomerId = null;
+
+    async function loadProducts() {
+      const res = await fetch('http://localhost:8080/products');
+      const products = await res.json();
+      products.forEach(p => {
+        productMap.set(p.id.toString(), p);
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.id} - ${p.name}`;
+        productSelect.appendChild(opt);
+      });
+    }
+
+    async function loadCustomers() {
+      const res = await fetch('http://localhost:8081/customers');
+      const customers = await res.json();
+      customers.forEach(c => {
+        customerMap.set(c.id.toString(), c);
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.id} - ${c.name}`;
+        customerSelect.appendChild(opt);
+      });
+    }
+
+    async function onProductChange() {
+      selectedProductId = productSelect.value;
+      if (!selectedProductId) return;
+
+      const product = productMap.get(selectedProductId);
+      codeSpan.textContent = product.code;
+      nameSpan.textContent = product.name;
+      typeSpan.textContent = product.type;
+      activeSpan.textContent = product.active;
+
+      // enable customer dropdown
+      customerSelect.disabled = false;
+
+      // clear price fields
+      priceInput.value = '';
+      currencyInput.value = 'USD';
+      validFromInput.value = '';
+      validToInput.value = '';
+    }
+
+    async function onCustomerChange() {
+      selectedCustomerId = customerSelect.value;
+      if (!selectedProductId || !selectedCustomerId) return;
+
+      const res = await fetch(`http://localhost:8082/priceguide/customer-prices/${selectedProductId}/${selectedCustomerId}`);
+      if (res.ok) {
+        const data = await res.json();
+        priceInput.value = data.price;
+        currencyInput.value = data.currency;
+        validFromInput.value = data.validFrom || '';
+        validToInput.value = data.validTo || '';
+      } else {
+        priceInput.value = '';
+        currencyInput.value = 'USD';
+        validFromInput.value = '';
+        validToInput.value = '';
+      }
+    }
+
+    async function saveCustomerPrice() {
+      if (!selectedProductId || !selectedCustomerId) {
+        alert("Please select both product and customer.");
+        return;
+      }
+
+      const payload = {
+        productId: selectedProductId,
+        customerId: selectedCustomerId,
+        price: parseFloat(priceInput.value),
+        currency: currencyInput.value || 'USD',
+        validFrom: validFromInput.value || null,
+        validTo: validToInput.value || null
+      };
+
+      const res = await fetch(`http://localhost:8082/priceguide/customer-prices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert("Customer price saved.");
+        onCustomerChange();
+      } else {
+        alert("Error saving customer price.");
+      }
+    }
+
+    // Initial loading
+    productSelect.addEventListener('change', onProductChange);
+    customerSelect.addEventListener('change', onCustomerChange);
+    loadProducts();
+    loadCustomers();
+  </script>
+</body>
+</html>
