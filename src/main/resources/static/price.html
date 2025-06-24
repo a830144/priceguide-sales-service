@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Customer Price Management</title>
+  <title>Product Pricing Management</title>
 </head>
 <body>
-  <h2>Customer-Specific Price Management</h2>
+  <h2>Product Pricing Management</h2>
 
   <!-- Product Dropdown -->
   <label for="productSelect">Product ID:</label>
@@ -28,6 +28,16 @@
     <p><strong>Active:</strong> <span id="active"></span></p>
   </div>
 
+  <!-- Standard Price Form -->
+  <div style="margin-top:20px;">
+    <h3>Standard Price Info</h3>
+    <p><label>Price: <input type="number" id="standardPrice" step="0.01" /></label></p>
+    <p><label>Currency: <input type="text" id="standardCurrency" maxlength="3" value="USD" /></label></p>
+    <p><label>Valid From: <input type="date" id="standardValidFrom" /></label></p>
+    <p><label>Valid To: <input type="date" id="standardValidTo" /></label></p>
+    <button onclick="saveStandardPrice()">Save Standard Price</button>
+  </div>
+
   <!-- Customer Price Form -->
   <div style="margin-top:20px;">
     <h3>Customer Price Info</h3>
@@ -46,6 +56,11 @@
     const typeSpan = document.getElementById('type');
     const activeSpan = document.getElementById('active');
 
+    const standardPriceInput = document.getElementById('standardPrice');
+    const standardCurrencyInput = document.getElementById('standardCurrency');
+    const standardValidFromInput = document.getElementById('standardValidFrom');
+    const standardValidToInput = document.getElementById('standardValidTo');
+
     const priceInput = document.getElementById('price');
     const currencyInput = document.getElementById('currency');
     const validFromInput = document.getElementById('validFrom');
@@ -56,6 +71,7 @@
 
     let selectedProductId = null;
     let selectedCustomerId = null;
+    let currentStandardPriceId = null;
 
     async function loadProducts() {
       const res = await fetch('http://localhost:8080/products');
@@ -91,10 +107,26 @@
       typeSpan.textContent = product.type;
       activeSpan.textContent = product.active;
 
-      // enable customer dropdown
       customerSelect.disabled = false;
 
-      // clear price fields
+      // Load Standard Price
+      const res = await fetch(`http://localhost:8082/priceguide/standard-prices/priceguide/${selectedProductId}`);
+      if (res.ok) {
+        const data = await res.json();
+        standardPriceInput.value = data.price;
+        standardCurrencyInput.value = data.currency || 'USD';
+        standardValidFromInput.value = data.validFrom || '';
+        standardValidToInput.value = data.validTo || '';
+        currentStandardPriceId = data.id;
+      } else {
+        standardPriceInput.value = '';
+        standardCurrencyInput.value = 'USD';
+        standardValidFromInput.value = '';
+        standardValidToInput.value = '';
+        currentStandardPriceId = null;
+      }
+
+      // Clear Customer Price Fields
       priceInput.value = '';
       currencyInput.value = 'USD';
       validFromInput.value = '';
@@ -117,6 +149,46 @@
         currencyInput.value = 'USD';
         validFromInput.value = '';
         validToInput.value = '';
+      }
+    }
+
+    async function saveStandardPrice() {
+      if (!selectedProductId) {
+        alert("Please select a product.");
+        return;
+      }
+
+      const value = parseFloat(standardPriceInput.value);
+      if (isNaN(value)) {
+        alert("Please enter a valid standard price.");
+        return;
+      }
+
+      const payload = {
+        productId: selectedProductId,
+        price: value,
+        currency: standardCurrencyInput.value || 'USD',
+        validFrom: standardValidFromInput.value || null,
+        validTo: standardValidToInput.value || null
+      };
+
+      const url = currentStandardPriceId
+        ? `http://localhost:8082/priceguide/standard-prices/${currentStandardPriceId}`
+        : `http://localhost:8082/priceguide/standard-prices`;
+
+      const method = currentStandardPriceId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert("Standard price saved.");
+        onProductChange();
+      } else {
+        alert("Error saving standard price.");
       }
     }
 
@@ -149,7 +221,6 @@
       }
     }
 
-    // Initial loading
     productSelect.addEventListener('change', onProductChange);
     customerSelect.addEventListener('change', onCustomerChange);
     loadProducts();
