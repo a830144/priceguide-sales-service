@@ -24,8 +24,9 @@ public class CustomerPriceController {
             @PathVariable String productId,
             @PathVariable String customerId) {
 
-        CustomerPrice price = service.getPrice(productId, customerId);
-        return price != null ? ResponseEntity.ok(price) : ResponseEntity.notFound().build();
+    	 return service.getPrice(productId,customerId)
+                 .map(ResponseEntity::ok)
+                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
